@@ -4,7 +4,6 @@ import com.rebbouh.event_bus.CoalescingEventBusMultiThreaded;
 import com.rebbouh.event_bus.Consumer;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
@@ -16,7 +15,8 @@ public class SlidingWindowStatisticsImpl implements SlidingWindowStatistics {
   /**
    * This data structure holds the counts for each measurement, it's used for mode computing.
    */
-  private final TreeMap<MeasurementCount, MeasurementCount> counts = new TreeMap<>(Comparator.comparingInt(m -> m.count));
+  private final TreeMap<MeasurementCount, MeasurementCount> counts = new TreeMap<>((mc1, mc2) -> mc2.count() - mc1.count());
+  private final Map<Integer, MeasurementCount> measurements = new HashMap<>();
   /**
    * this is the priority queue that contains all the measurement, it's used to compute the percentiles, and also used
    * for size and to compute the sum, which is needed for mean.
@@ -63,15 +63,22 @@ public class SlidingWindowStatisticsImpl implements SlidingWindowStatistics {
     }
     ranks.offer(measurement);
     // counts structure Add count for the new measurement
-    MeasurementCount initialMeasurementCount = new MeasurementCount(measurement, 0);
-    MeasurementCount measurementCount = counts.getOrDefault(initialMeasurementCount, initialMeasurementCount);
-    MeasurementCount newMeasurementCount = new MeasurementCount(measurement, measurementCount.count + 1);
+    var measurementCount = measurements.getOrDefault(measurement, new MeasurementCount(measurement, 0));
+    var newMeasurementCount = new MeasurementCount(measurement, measurementCount.count + 1);
+    var oldMeasurement = measurements.put(measurement, newMeasurementCount);
+    if (oldMeasurement != null) {
+      counts.remove(oldMeasurement);
+    }
     counts.put(newMeasurementCount, newMeasurementCount);
     // decrement count for the remove measurement
     if (removedMeasurement != null) {
-      MeasurementCount removedMeasurementCount = counts.get(new MeasurementCount(removedMeasurement, 0));
-      MeasurementCount newRemovedMeasurementCount = new MeasurementCount(removedMeasurement, removedMeasurementCount.count - 1);
-      counts.compute(newRemovedMeasurementCount, (k, v) -> newRemovedMeasurementCount.count > 0 ? newRemovedMeasurementCount : null);
+      MeasurementCount removedMeasurementCount = measurements.remove(removedMeasurement);
+      counts.remove(removedMeasurementCount);
+      if (removedMeasurementCount.count > 1) {
+        var newRemovedMeasurementCount = new MeasurementCount(removedMeasurement, removedMeasurementCount.count - 1);
+        measurements.put(removedMeasurement, newRemovedMeasurementCount);
+        counts.put(newRemovedMeasurementCount, newRemovedMeasurementCount);
+      }
     }
     adjustStatistics(measurement, removedMeasurement);
     eventBus.publishEvent(new StatisticsImpl(this.mean, this.mode, this.percentiles));

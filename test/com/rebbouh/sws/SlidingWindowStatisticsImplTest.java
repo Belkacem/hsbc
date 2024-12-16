@@ -1,10 +1,9 @@
 package com.rebbouh.sws;
 
-import com.rebbouh.event_bus.CoalescingEventBusMultiThreaded;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class SlidingWindowStatisticsImplTest {
 
@@ -38,11 +37,41 @@ class SlidingWindowStatisticsImplTest {
     slidingWindowStatistics.add(2);
     slidingWindowStatistics.add(2);
     slidingWindowStatistics.add(4);
+    slidingWindowStatistics.add(4);
+    slidingWindowStatistics.add(4);
+    slidingWindowStatistics.add(4);
+    slidingWindowStatistics.add(4);
     slidingWindowStatistics.add(3);
     Statistics latestStatistics = slidingWindowStatistics.getLatestStatistics();
-    assertEquals(2.5, latestStatistics.getMean());
+    assertEquals(3.1, latestStatistics.getMean());
+    assertEquals(4, latestStatistics.getMode());
+    assertEquals(latestStatistics.getPctile(60), 4);
+
+
+  }
+
+  @Test
+  void getLatestStatisticsWithRestrictedWindow() {
+
+    var boundSlidingWindowStatistics = new SlidingWindowStatisticsImpl(5);
+    boundSlidingWindowStatistics.add(2);
+    boundSlidingWindowStatistics.add(2);
+    boundSlidingWindowStatistics.add(2);
+    boundSlidingWindowStatistics.add(2);
+    boundSlidingWindowStatistics.add(4);
+    Statistics latestStatistics = boundSlidingWindowStatistics.getLatestStatistics();
+    assertEquals(2.4, latestStatistics.getMean());
     assertEquals(2, latestStatistics.getMode());
-    assertEquals(latestStatistics.getPctile(60), 2);
+    assertEquals(latestStatistics.getPctile(10), 2);
+
+    boundSlidingWindowStatistics.add(4);
+    boundSlidingWindowStatistics.add(4);
+    boundSlidingWindowStatistics.add(4);
+    boundSlidingWindowStatistics.add(4);
+    latestStatistics = boundSlidingWindowStatistics.getLatestStatistics();
+    assertEquals(4, latestStatistics.getMean());
+    assertEquals(4, latestStatistics.getMode());
+    assertEquals(latestStatistics.getPctile(60), 4);
 
 
   }

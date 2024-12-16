@@ -17,7 +17,7 @@ public class EventBusMultiThreaded<T> {
     /**
      * @param event The event to be published
      */
-    public void publishEvent(T event) {
+    public synchronized void publishEvent(T event) {
         consumers.stream().map(consumer -> (Runnable) () -> {
             try {
                 consumer.consume(event);
@@ -29,7 +29,7 @@ public class EventBusMultiThreaded<T> {
             .forEach(executorService::submit);
     }
 
-    public void subscribe(Consumer<T> consumer) {
+    public synchronized void subscribe(Consumer<T> consumer) {
         consumers.add(consumer);
     }
 

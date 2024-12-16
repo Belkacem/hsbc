@@ -11,7 +11,8 @@ import java.util.function.Predicate;
 
 /**
  * For this Event bus we cant use the executor service internal blocking queue to manage queuing events, we have to :
- * 1) Write an event bus that takes the
+ * 1) Write an event bus that puts the consumersAndFilters and filters on a Concurrent set;
+ * 2) Implement a {@link CoalescingQueue} that takes the last value of a class;
  */
 
 public class CoalescingEventBusMultiThreaded implements EventBus, Runnable {
